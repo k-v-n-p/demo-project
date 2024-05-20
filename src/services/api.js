@@ -32,3 +32,32 @@ export const fetchProducts = async ({ limit = 10, skip = 0 }) => {
         throw error;
     }
 };
+
+export const searchProducts = async ({ query, category }) => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/search`, {
+            params: { q: query }
+        });
+
+        let filteredProducts = [];
+        if (response.data && response.data.products) {
+            // If category is provided, filter products based on category
+            if (category) {
+                filteredProducts = response.data.products.filter(product => product.category === category);
+            } else {
+                // If category is not provided, use all products
+                filteredProducts = response.data.products;
+            }
+        }
+
+        // Calculate total number of products
+        const total = filteredProducts.length;
+
+        return { products: filteredProducts, total: total };
+    } catch (error) {
+        console.error("Error searching products:", error);
+        throw error;
+    }
+};
+
+
