@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import { Switch, FormGroup, Typography, FormControl, InputLabel, Select, MenuItem, Button,Pagination, TextField } from '@mui/material';
-import { fetchProducts, fetchProductsByCategory, fetchCategories, searchProducts  } from '../services/api';
+import { Switch, FormGroup, Typography, FormControl, InputLabel, Select, MenuItem, Button,Pagination, TextField, Autocomplete } from '@mui/material';
+import { fetchProducts, fetchProductsByBrandCategory, fetchCategories, searchProducts, fetchAllProducts  } from '../services/api';
 import ProductCard from './ProductCard';
 import ProductTable from './ProductTable';
 
@@ -16,36 +16,58 @@ const ProductDashboard = () => {
     const [sortField, setSortField] = useState('price');
     const [sortOrder, setSortOrder] = useState('asc');
     const [searchQuery, setSearchQuery] = useState('');
+    const [brands, setBrands] = useState([]);
+    const [selectedBrand, setSelectedBrand] = useState('');
+
 
     useEffect(() => {
         const loadCategories = async () => {
-            const data = await fetchCategories();
-            setCategories(data || []); 
+            const categoriesData = await fetchCategories();
+            setCategories(categoriesData || []); 
+            const productData = await fetchAllProducts();
+            setBrands([...new Set(productData.products.map(product => product.brand))] || []); // Extract unique brands from products as it is not provided by backend
         };
         loadCategories();
     }, []);
     
+
+    useEffect(() => {
+        const getBrandsByCategory = async () => { 
+            const productData = await fetchAllProducts();
+            if (selectedCategory) {
+                // Changing brand options based on category selection
+                const filteredProducts = productData.products.filter(product => product.category === selectedCategory);
+                console.log(filteredProducts)
+                setBrands([...new Set(filteredProducts.map(product => product.brand))] || []);
+            } else {
+                // If no selected category, set brands from all products
+                setBrands([...new Set(productData.products.map(product => product.brand))] || []);
+            }
+        };
+        getBrandsByCategory();
+    }, [selectedCategory]);
+    console.log(brands);
+
     useEffect(() => {
         const loadProducts = async () => {
             let data;
             if (searchQuery) {
-                setSortField('price');
-                setSortOrder('asc');
                 setCurrentPage(1) //Feature to retain browing history page when searched is not implemented
-                data = await searchProducts({ query: searchQuery, category: selectedCategory});
+                data = await searchProducts({ query: searchQuery, category: selectedCategory, sortField: sortField, sortOrder: sortOrder, brand: selectedBrand});
             }
-            else if (selectedCategory!==""){ 
-                data =await fetchProductsByCategory(selectedCategory)
+            else if (selectedCategory || selectedBrand){ 
+                data =await fetchProductsByBrandCategory({category:selectedCategory, brand: selectedBrand, sortField: sortField, sortOrder: sortOrder});
             }
             else{
                 data=await fetchProducts({ skip: (currentPage - 1) * 10, limit: 10 });
             }
+
             setProducts(data.products || []); 
             setTotalPages(Math.ceil(data.total / 10)); 
             sortProducts(data.products || []);
         };
         loadProducts();
-    }, [selectedCategory, currentPage, sortField, sortOrder, searchQuery]);
+    }, [selectedCategory, currentPage, sortField, sortOrder, searchQuery, selectedBrand]);
 
 
     const sortProducts = (products) => {
@@ -72,34 +94,64 @@ const ProductDashboard = () => {
                 <Typography>{'Table'}</Typography>
             </FormGroup>
 
-            {/* Search Functionality 2.*/}
-            <TextField
-                label="Search Products"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            {/* <Autocomplete
+            id="grouped-demo"
+            options={products.sort((a, b) => -b.firstLetter.localeCompare(a.firstLetter))}
+            groupBy={(option) => option.firstLetter}
+            getOptionLabel={(option) => option.title}
+            sx={{ width: 300 }}
+            renderInput={(params) => <TextField {...params} label="With categories" />}
+            /> */}
 
-            {/* Filtering Feature 3. */}
-            <FormControl variant="outlined" sx={{ m: 1, minWidth: 200 }}>
-                <InputLabel id="category-select-label">Category</InputLabel>
-                <Select
-                    labelId="category-select-label"
-                    id="category-select"
-                    value={selectedCategory}
-                    label="Category"
-                    onChange={e => setSelectedCategory(e.target.value)}
-                >
-                    <MenuItem value="">
-                        <em>All</em>
-                    </MenuItem>
-                    {categories.map((category, index) => (
-                        <MenuItem key={index} value={category}>{category}</MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+                {/* Search Functionality 2.*/}
+                <TextField
+                    label="Search Products"
+                    variant="outlined"
+                    fullWidth
+                    margin="normal"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+
+                {/* Filtering Feature 3. */}
+                <FormControl variant="outlined" sx={{ m: 2, minWidth: 200 }}>
+                    <InputLabel id="category-select-label">Category</InputLabel>
+                    <Select
+                        labelId="category-select-label"
+                        id="category-select"
+                        value={selectedCategory}
+                        label="Category"
+                        onChange={e => setSelectedCategory(e.target.value)}
+                    >
+                        <MenuItem value="">
+                            <em>All</em>
+                        </MenuItem>
+                        {categories.map((category, index) => (
+                            <MenuItem key={index} value={category}>{category}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                <FormControl variant="outlined" sx={{ m: 2, minWidth: 200 }}>
+                    <InputLabel id="brand-select-label">Brand</InputLabel>
+                    <Select
+                        labelId="brand-select-label"
+                        id="brand-select"
+                        value={selectedBrand}
+                        label="Brand"
+                        onChange={e => setSelectedBrand(e.target.value)}
+                    >
+                        <MenuItem value="">
+                            <em>All</em>
+                        </MenuItem>
+                        {brands.map((brand, index) => (
+                            <MenuItem key={index} value={brand}>{brand}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+            </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
                 {/* Sorting Feature 4. this is not provided by backend, hence implemented and reset upon search*/}
