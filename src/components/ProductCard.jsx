@@ -20,6 +20,8 @@ const ProductCard = ({ product }) => {
                     Category: {product.category}
                     <br />
                     Brand: {product.brand}
+                    <br />
+                    Rating: {product.rating}
                 </Typography>
             </CardContent>
         </Card>

@@ -25,7 +25,7 @@ export const fetchCategories = async () => {
 
 export const fetchProducts = async ({ limit = 10, skip = 0 }) => {
     try {
-        const response = await axios.get(`${API_BASE_URL}?limit=${limit}&skip=${skip}`);
+        const response = await axios.get(`${API_BASE_URL}?limit=${limit}&skip=${skip}&select=title,price,brand,category,rating,thumbnail`);
         return response.data;
     } catch (error) {
         console.error("Error fetching products:", error);
